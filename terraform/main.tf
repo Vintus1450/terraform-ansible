@@ -1,0 +1,49 @@
+data "yandex_vpc_network" "default" {
+  name = "default"
+ }
+
+resource "yandex_vpc_subnet" "default" {
+  name           = "my-subnet"
+  zone           = "ru-central1-a"  # Та же зона, где диск
+  network_id     = data.yandex_vpc_network.default.id
+  v4_cidr_blocks = ["192.168.10.0/24"]
+ }
+
+resource "yandex_compute_instance" "virtual_machine" {
+  for_each = var.virtual_machines
+  name     = each.value["vm_name"]
+  zone     = "ru-central1-a"  # Важно!
+
+  resources {
+    cores  = each.value["vm_cpu"]
+    memory = each.value["ram"]
+  }
+
+  boot_disk {
+    initialize_params {
+      image_id = each.value["template"]
+      size     = each.value["disk"]
+      type     = "network-hdd"
+    }
+  }
+
+  network_interface {
+    subnet_id = yandex_vpc_subnet.default.id
+    nat       = true
+  }
+
+  metadata = {
+    user-data = <<-EOF
+      #cloud-config
+      users:
+        - name: vintus
+          groups: sudo
+          shell: /bin/bash
+          sudo: ['ALL=(ALL) NOPASSWD:ALL']  # Даёт права root без пароля
+          ssh_authorized_keys:
+            - ${file("~/.ssh/id_rsa.pub")}  # Ваш публичный ключ
+      # Отключаем вход по паролю для root (опционально)
+      disable_root: true
+      EOF
+  }
+}

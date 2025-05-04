@@ -1,0 +1,16 @@
+---
+- name: Меняем имя машины
+  shell: "echo {{ inventory_hostname }} > /etc/hostname"
+  when: "inventory_hostname != ansible_hostname"
+
+- name: Обновление apt-кеша
+  apt:
+    update_cache: yes
+  become: true  # Дублируем для надежности
+
+- name: Установка программ
+  apt:
+    name: "{{ packages_to_install }}"
+    state: present
+  become: true
+  when: ansible_facts['os_family'] == 'Debian'

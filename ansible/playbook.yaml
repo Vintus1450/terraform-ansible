@@ -1,0 +1,32 @@
+---
+- name: Установка стандартных пакетов
+  hosts: all
+  become: true  # Активируем повышение прав
+  become_method: sudo  # Явно указываем метод
+  gather_facts: true  # Важно для проверки ОС
+
+  tasks:
+    - name: Проверка поддержки ОС
+      fail:
+        msg: "Этот playbook работает только на Debian/Ubuntu"
+      when: ansible_facts['os_family'] != 'Debian'
+
+  roles:
+    - role: default_packages
+
+  tags:
+    - install_packages
+
+- name: Установка и настройка nginx c кастомной страницей
+  hosts: nginx # Будет работать на узлах в группе nginx
+  roles:
+    - role: nginx_custom
+  tags:
+    - nginx_custom
+
+- name: Настройка nginx прокси на порту 3000
+  hosts: vm_1  # Явно указываем нужный хост
+  gather_facts: true
+  roles:
+    - role: nginx_proxy
+  tags: nginx_proxy
